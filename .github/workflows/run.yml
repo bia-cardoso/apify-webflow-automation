@@ -35,24 +35,28 @@ jobs:
               | sed 's/  */ /g' \
               | xargs \
               | cut -c1-256)
-          
+                      
             URL=$(echo "$post" | jq -r '.linkedinUrl')
-          
+            # 🔥 escape for JSON
+            TITLE_JSON=$(printf '%s' "$TITLE" | jq -R .)
+            URL_JSON=$(printf '%s' "$URL" | jq -R .)
+
+            
             echo "Posting (CLEAN): $TITLE"
             echo "Length: ${#TITLE}"
           
-            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-              "https://api.webflow.com/collections/69fb63b8ccb3ec3580dbbf43/items" \
-              -H "Authorization: Bearer ${{ secrets.WEBFLOW_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              -H "accept-version: 1.0.0" \
-              -d "{
-                \"fields\": {
-                  \"name\": \"$TITLE\",
-                  \"slug\": \"$(echo $URL | md5sum | cut -d' ' -f1)\",
-                  \"post-url\": \"$URL\"
-                }
-              }")
+           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.webflow.com/collections/69fb63b8ccb3ec3580dbbf43/items" \
+            -H "Authorization: Bearer ${{ secrets.WEBFLOW_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -H "accept-version: 1.0.0" \
+            -d "{
+              \"fields\": {
+                \"name\": $TITLE_JSON,
+                \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
+                \"post-url\": $URL_JSON
+              }
+            }")
           
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
