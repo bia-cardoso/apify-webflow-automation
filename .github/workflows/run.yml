@@ -51,7 +51,7 @@ jobs:
             -H "Content-Type: application/json" \
             -H "accept-version: 1.0.0" \
             -d "{
-              \"fields\": {
+              \"fieldData\": {
                 \"name\": $TITLE_JSON,
                 \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
                 \"post-url\": $URL_JSON
