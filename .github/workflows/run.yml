@@ -32,6 +32,7 @@ jobs:
             | tr -d '\r' \
             | sed 's/\xC2\xA0/ /g' \
             | sed -E 's/(  +|\n).*$//' \
+            | sed 's/[[:space:]]\+/ /g' \
             | xargs \
             | cut -c1-256)
                       
