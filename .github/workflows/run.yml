@@ -1,15 +1,63 @@
-name: Apify to Webflow Automation
+name: Apify → Webflow Sync
 
 on:
   schedule:
-    - cron: "0 */24 * * *"  # every 24 hours
-  workflow_dispatch:       # allows manual run button
+    - cron: "0 */24 * * *"
+  workflow_dispatch:
 
 jobs:
-  run-script:
+  sync:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Run Apify → Webflow script
+      - name: Run Apify Actor
+        id: apify
         run: |
-          echo "This is where your automation will run"
+          RESPONSE=$(curl -s -X POST "https://api.apify.com/v2/acts/A3cAPGpwBEG8RJwse/runs?token=${{ secrets.APIFY_TOKEN }}")
+
+          RUN_ID=$(echo $RESPONSE | jq -r '.data.id')
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+
+      - name: Wait for Apify to finish
+        run: |
+          echo "Waiting for Apify run..."
+
+          while true; do
+            STATUS=$(curl -s "https://api.apify.com/v2/actor-runs/${{ env.RUN_ID }}?token=${{ secrets.APIFY_TOKEN }}" | jq -r '.data.status')
+
+            echo "Status: $STATUS"
+
+            if [ "$STATUS" = "SUCCEEDED" ]; then
+              break
+            fi
+
+            sleep 10
+          done
+
+      - name: Get dataset items
+        id: dataset
+        run: |
+          DATA=$(curl -s "https://api.apify.com/v2/actor-runs/${{ env.RUN_ID }}/dataset/items?token=${{ secrets.APIFY_TOKEN }}")
+
+          echo "$DATA" > posts.json
+
+      - name: Send to Webflow CMS
+        run: |
+          cat posts.json | jq -c '.[]' | while read post; do
+
+            TITLE=$(echo $post | jq -r '.text // "No title"')
+            URL=$(echo $post | jq -r '.url')
+
+            curl -X POST "https://api.webflow.com/collections/YOUR_COLLECTION_ID/items" \
+              -H "Authorization: Bearer ${{ secrets.WEBFLOW_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -H "accept-version: 1.0.0" \
+              -d "{
+                \"fields\": {
+                  \"name\": \"$TITLE\",
+                  \"slug\": \"$(echo $URL | md5sum | cut -d' ' -f1)\",
+                  \"post-url\": \"$URL\"
+                }
+              }"
+
+          done
