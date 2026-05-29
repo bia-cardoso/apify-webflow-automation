@@ -43,12 +43,17 @@ jobs:
 
       - name: Send to Webflow CMS
         run: |
+          set -e
+
           cat posts.json | jq -c '.[]' | while read post; do
 
             TITLE=$(echo $post | jq -r '.text // "No title"')
             URL=$(echo $post | jq -r '.url')
 
-            curl -X POST "https://api.webflow.com/collections/YOUR_COLLECTION_ID/items" \
+            echo "Posting: $TITLE"
+
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+              "https://api.webflow.com/collections/69fb63b8ccb3ec3580dbbf43/items" \
               -H "Authorization: Bearer ${{ secrets.WEBFLOW_TOKEN }}" \
               -H "Content-Type: application/json" \
               -H "accept-version: 1.0.0" \
@@ -58,6 +63,19 @@ jobs:
                   \"slug\": \"$(echo $URL | md5sum | cut -d' ' -f1)\",
                   \"post-url\": \"$URL\"
                 }
-              }"
+              }")
+
+            # Split response body + status code
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            STATUS=$(echo "$RESPONSE" | tail -n1)
+
+            echo "Webflow status: $STATUS"
+            echo "Webflow response: $BODY"
+
+            # Fail workflow if Webflow rejects request
+            if [ "$STATUS" -ge 400 ]; then
+              echo "❌ Webflow error detected. Stopping workflow."
+              exit 1
+            fi
 
           done
