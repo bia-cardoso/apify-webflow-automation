@@ -12,35 +12,60 @@ jobs:
     steps:
       - name: Run Apify (SYNC TASK)
         run: |
+          set -e
+
           DATA=$(curl -s -X POST \
-            "https://api.apify.com/v2/actor-tasks/beatriz.cardoso~linkedin-profile-posts-task/run-sync-get-dataset-items?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E" \
+            "https://api.apify.com/v2/actor-tasks/beatriz.cardoso~linkedin-profile-posts-task/run-sync-get-dataset-items?token=${{ secrets.APIFY_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{}')
 
           echo "$DATA" > posts.json
-
-          echo "Preview:"
-          cat posts.json
+          echo "Fetched items:"
+          jq length posts.json
 
       - name: Send to Webflow CMS
         run: |
           set -e
-          
+
           jq -c '.[]' posts.json | while IFS= read -r post; do
-          
-            TITLE=$(echo "$post" | jq -r '.content' \
+
+            # ---------------------------
+            # TITLE CLEANING (safe + stable)
+            # ---------------------------
+            RAW_TITLE=$(echo "$post" | jq -r '.content // ""')
+
+            TITLE=$(echo "$RAW_TITLE" \
               | tr -d '\r' \
               | sed 's/\xC2\xA0/ /g' \
-              | tr '\n' ' ' \
+              | sed ':a;N;$!ba;s/\n/ /g' \
               | sed 's/  */ /g' \
               | xargs \
               | cut -c1-256)
-          
+
+            # fallback if empty
+            if [ -z "$TITLE" ]; then
+              TITLE="LinkedIn Post"
+            fi
+
+            # ---------------------------
+            # URL
+            # ---------------------------
             URL=$(echo "$post" | jq -r '.linkedinUrl')
-          
-            echo "Posting (CLEAN): $TITLE"
+
+            # ---------------------------
+            # SAFE SLUG (unique + stable)
+            # ---------------------------
+            SLUG=$(echo -n "$URL" | md5sum | awk '{print $1}')
+
+            echo "-----------------------------"
+            echo "Posting:"
+            echo "$TITLE"
             echo "Length: ${#TITLE}"
-          
+            echo "URL: $URL"
+
+            # ---------------------------
+            # WEBFLOW REQUEST
+            # ---------------------------
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
               "https://api.webflow.com/collections/69fb63b8ccb3ec3580dbbf43/items" \
               -H "Authorization: Bearer ${{ secrets.WEBFLOW_TOKEN }}" \
@@ -49,15 +74,23 @@ jobs:
               -d "{
                 \"fields\": {
                   \"name\": \"$TITLE\",
-                  \"slug\": \"$(echo $URL | md5sum | cut -d' ' -f1)\",
-                  \"post-url\": \"$URL\"
+                  \"slug\": \"$SLUG\",
+                  \"YOUR_WEBFLOW_URL_FIELD_ID\": \"$URL\"
                 }
               }")
-          
+
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
-          
+
             echo "Status: $STATUS"
             echo "$BODY"
-          
+
+            # ---------------------------
+            # FAIL SAFE
+            # ---------------------------
+            if [ "$STATUS" -ge 400 ]; then
+              echo "❌ Webflow error detected"
+              exit 1
+            fi
+
           done
