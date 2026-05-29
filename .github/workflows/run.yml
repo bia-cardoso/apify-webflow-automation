@@ -28,16 +28,7 @@ jobs:
 
           cat posts.json | jq -c '.[]' | while read post; do
 
-            TITLE=$(jq -r '
-              .content
-              | gsub("\u00A0"; " ")
-              | gsub("\\n"; " ")
-              | gsub("\n"; " ")
-              | gsub(" +"; " ")
-              | sub("^ +"; "")
-              | sub(" +$"; "")
-              | .[0:256]
-            ' <<< "$post")
+            TITLE=$(echo "$post" | jq -r '.content' | tr -d '\r' | cut -d $'\n' -f1 | xargs | cut -c1-256)
             URL=$(echo "$post" | jq -r '.linkedinUrl')
 
             echo "Posting: $TITLE"
