@@ -10,36 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Run Apify Actor
-        id: apify
+      - name: Run Apify (SYNC TASK)
         run: |
-          RESPONSE=$(curl -s -X POST "https://api.apify.com/v2/acts/J00NlaTmIbiGZscNi/runs?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E")
-
-          RUN_ID=$(echo $RESPONSE | jq -r '.data.id')
-          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-
-      - name: Wait for Apify to finish
-        run: |
-          echo "Waiting for Apify run..."
-
-          while true; do
-            STATUS=$(curl -s "https://api.apify.com/v2/actor-runs/${{ env.RUN_ID }}?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E" | jq -r '.data.status')
-
-            echo "Status: $STATUS"
-
-            if [ "$STATUS" = "SUCCEEDED" ]; then
-              break
-            fi
-
-            sleep 10
-          done
-
-      - name: Get dataset items
-        id: dataset
-        run: |
-          DATA=$(curl -s "https://api.apify.com/v2/actor-runs/${{ env.RUN_ID }}/dataset/items?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E")
+          DATA=$(curl -s -X POST \
+            "https://api.apify.com/v2/actor-tasks/beatriz.cardoso~linkedin-profile-posts-task/run-sync-get-dataset-items?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E" \
+            -H "Content-Type: application/json" \
+            -d '{}')
 
           echo "$DATA" > posts.json
+
+          echo "Preview:"
+          cat posts.json
 
       - name: Send to Webflow CMS
         run: |
@@ -47,8 +28,8 @@ jobs:
 
           cat posts.json | jq -c '.[]' | while read post; do
 
-            TITLE=$(echo $post | jq -r '.text // "No title"')
-            URL=$(echo $post | jq -r '.url')
+            TITLE=$(echo "$post" | jq -r '.text // "No title"')
+            URL=$(echo "$post" | jq -r '.url')
 
             echo "Posting: $TITLE"
 
@@ -65,14 +46,12 @@ jobs:
                 }
               }")
 
-            # Split response body + status code
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
 
             echo "Webflow status: $STATUS"
             echo "Webflow response: $BODY"
 
-            # Fail workflow if Webflow rejects request
             if [ "$STATUS" -ge 400 ]; then
               echo "❌ Webflow error detected. Stopping workflow."
               exit 1
