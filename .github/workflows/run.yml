@@ -31,9 +31,10 @@ jobs:
             TITLE=$(jq -r '
               .content
               | split("\n\n")[0]
-              | split("\n")[0]
               | gsub("\n"; " ")
               | gsub(" +"; " ")
+              | sub("^ +"; "")
+              | sub(" +$"; "")
               | .[0:256]
             ' <<< "$post")
             URL=$(echo "$post" | jq -r '.linkedinUrl')
