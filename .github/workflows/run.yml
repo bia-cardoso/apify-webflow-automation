@@ -43,7 +43,7 @@ jobs:
               -H "Content-Type: application/json" \
               -H "accept-version: 1.0.0" \
               -d "{
-                \"fields\": {
+                \"fieldData\": {
                   \"name\": \"$TITLE\",
                   \"slug\": \"$(echo $URL | md5sum | cut -d' ' -f1)\",
                   \"post-url\": \"$URL\"
