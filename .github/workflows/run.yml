@@ -28,13 +28,12 @@ jobs:
           
           jq -c '.[]' posts.json | while IFS= read -r post; do
           
-            TITLE=$(echo "$post" | jq -r '.content' \
-              | tr -d '\r' \
-              | sed 's/\xC2\xA0/ /g' \
-              | tr '\n' ' ' \
-              | sed 's/  */ /g' \
-              | xargs \
-              | cut -c1-256)
+           TITLE=$(echo "$post" | jq -r '.content' \
+            | tr -d '\r' \
+            | sed 's/\xC2\xA0/ /g' \
+            | sed -E 's/(  +|\n).*$//' \
+            | xargs \
+            | cut -c1-256)
                       
             URL=$(echo "$post" | jq -r '.linkedinUrl')
             # 🔥 escape for JSON
