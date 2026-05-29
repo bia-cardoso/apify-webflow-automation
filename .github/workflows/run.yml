@@ -27,7 +27,7 @@ jobs:
           set -e
 
           cat posts.json | jq -c '.[]' | while read post; do
-
+            echo "$post" | jq -r '.content' | cat -A
             TITLE=$(jq -r '
               .content
               | split("\n")[0]
