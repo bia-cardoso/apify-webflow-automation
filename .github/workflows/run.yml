@@ -28,10 +28,10 @@ jobs:
           
           jq -c '.[]' posts.json | while IFS= read -r post; do
           
-           TITLE=$(echo "$post" | jq -r '.content' \
+          TITLE=$(echo "$post" | jq -r '.content' \
             | tr -d '\r' \
             | sed 's/\xC2\xA0/ /g' \
-            | sed -E 's/(  +|\n).*$//' \
+            | awk -F'\n' '{print $1}' \
             | sed 's/[[:space:]]\+/ /g' \
             | xargs \
             | cut -c1-256)
