@@ -28,12 +28,15 @@ jobs:
 
           cat posts.json | jq -c '.[]' | while read post; do
             echo "$post" | jq -r '.content' | cat -A
-            TITLE=$(jq -r '
-              .content
-              | split("\n")[0]
-              | gsub("\r"; "")
-              | .[0:256]
-            ' <<< "$post")
+            TITLE=$(printf "%s" "$post" \
+              | jq -r '.content' \
+              | iconv -f utf-8 -t utf-8//IGNORE \
+              | tr -d '\r' \
+              | sed 's/\xC2\xA0/ /g' \
+              | sed 's/\n/ /g' \
+              | sed 's/  */ /g' \
+              | xargs \
+              | cut -c1-256)
             URL=$(echo "$post" | jq -r '.linkedinUrl')
 
             echo "Posting: $TITLE"
