@@ -30,7 +30,7 @@ jobs:
 
             TITLE=$(echo "$post" | jq -r '
               .content
-              | split("\n")[0]
+              | split("\\n")[0]
             ' | xargs | cut -c1-256)
             URL=$(echo "$post" | jq -r '.linkedinUrl')
 
