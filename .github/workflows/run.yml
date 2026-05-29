@@ -46,7 +46,7 @@ jobs:
             echo "Length: ${#TITLE}"
           
            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://api.webflow.com/collections/69fb63b8ccb3ec3580dbbf43/items" \
+            "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items" \
             -H "Authorization: Bearer ${{ secrets.WEBFLOW_TOKEN }}" \
             -H "Content-Type: application/json" \
             -H "accept-version: 1.0.0" \
