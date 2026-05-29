@@ -13,7 +13,7 @@ jobs:
       - name: Run Apify Actor
         id: apify
         run: |
-          RESPONSE=$(curl -s -X POST "https://api.apify.com/v2/acts/A3cAPGpwBEG8RJwse/runs?token=${{ secrets.APIFY_TOKEN }}")
+          RESPONSE=$(curl -s -X POST "https://api.apify.com/v2/acts/A3cAPGpwBEG8RJwse/runs?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E")
 
           RUN_ID=$(echo $RESPONSE | jq -r '.data.id')
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
@@ -23,7 +23,7 @@ jobs:
           echo "Waiting for Apify run..."
 
           while true; do
-            STATUS=$(curl -s "https://api.apify.com/v2/actor-runs/${{ env.RUN_ID }}?token=${{ secrets.APIFY_TOKEN }}" | jq -r '.data.status')
+            STATUS=$(curl -s "https://api.apify.com/v2/actor-runs/${{ env.RUN_ID }}?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E" | jq -r '.data.status')
 
             echo "Status: $STATUS"
 
@@ -37,7 +37,7 @@ jobs:
       - name: Get dataset items
         id: dataset
         run: |
-          DATA=$(curl -s "https://api.apify.com/v2/actor-runs/${{ env.RUN_ID }}/dataset/items?token=${{ secrets.APIFY_TOKEN }}")
+          DATA=$(curl -s "https://api.apify.com/v2/actor-runs/${{ env.RUN_ID }}/dataset/items?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E")
 
           echo "$DATA" > posts.json
 
@@ -54,7 +54,7 @@ jobs:
 
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
               "https://api.webflow.com/collections/69fb63b8ccb3ec3580dbbf43/items" \
-              -H "Authorization: Bearer ${{ secrets.WEBFLOW_TOKEN }}" \
+              -H "Authorization: Bearer 1f78c7aac8b8dbcb6edd802d5440bef2f8963f4798a781de5a2de81e18a50a63" \
               -H "Content-Type: application/json" \
               -H "accept-version: 1.0.0" \
               -d "{
