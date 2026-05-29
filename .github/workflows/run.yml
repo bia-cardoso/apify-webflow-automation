@@ -38,11 +38,13 @@ jobs:
             echo "Posting: $TITLE"
 
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-              "https://api.webflow.com/collections/69fb63b8ccb3ec3580dbbf43/items" \
+              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items/live" \
               -H "Authorization: Bearer 1f78c7aac8b8dbcb6edd802d5440bef2f8963f4798a781de5a2de81e18a50a63" \
               -H "Content-Type: application/json" \
               -H "accept-version: 1.0.0" \
               -d "{
+                \"isArchived\": false,
+                \"isDraft\": false,
                 \"fieldData\": {
                   \"name\": \"$TITLE\",
                   \"slug\": \"$(echo $URL | md5sum | cut -d' ' -f1)\",
