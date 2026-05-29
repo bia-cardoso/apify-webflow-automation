@@ -13,7 +13,7 @@ jobs:
       - name: Run Apify Actor
         id: apify
         run: |
-          RESPONSE=$(curl -s -X POST "https://api.apify.com/v2/acts/A3cAPGpwBEG8RJwse/runs?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E")
+          RESPONSE=$(curl -s -X POST "https://api.apify.com/v2/acts/J00NlaTmIbiGZscNi/runs?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E")
 
           RUN_ID=$(echo $RESPONSE | jq -r '.data.id')
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
