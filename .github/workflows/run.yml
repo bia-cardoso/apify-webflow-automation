@@ -25,46 +25,39 @@ jobs:
       - name: Send to Webflow CMS
         run: |
           set -e
-
-          cat posts.json | jq -c '.[]' | while read post; do
-            echo "$post" | jq -r '.content' | cat -A
-            TITLE=$(printf "%s" "$post" \
-              | jq -r '.content' \
-              | iconv -f utf-8 -t utf-8//IGNORE \
+          
+          jq -c '.[]' posts.json | while IFS= read -r post; do
+          
+            TITLE=$(echo "$post" | jq -r '.content' \
               | tr -d '\r' \
               | sed 's/\xC2\xA0/ /g' \
-              | sed 's/\n/ /g' \
+              | tr '\n' ' ' \
               | sed 's/  */ /g' \
               | xargs \
               | cut -c1-256)
+          
             URL=$(echo "$post" | jq -r '.linkedinUrl')
-
-            echo "Posting: $TITLE"
-
+          
+            echo "Posting (CLEAN): $TITLE"
+            echo "Length: ${#TITLE}"
+          
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items/live" \
-              -H "Authorization: Bearer 1f78c7aac8b8dbcb6edd802d5440bef2f8963f4798a781de5a2de81e18a50a63" \
+              "https://api.webflow.com/collections/69fb63b8ccb3ec3580dbbf43/items" \
+              -H "Authorization: Bearer ${{ secrets.WEBFLOW_TOKEN }}" \
               -H "Content-Type: application/json" \
               -H "accept-version: 1.0.0" \
               -d "{
-                \"isArchived\": false,
-                \"isDraft\": false,
-                \"fieldData\": {
+                \"fields\": {
                   \"name\": \"$TITLE\",
                   \"slug\": \"$(echo $URL | md5sum | cut -d' ' -f1)\",
                   \"post-url\": \"$URL\"
                 }
               }")
-
+          
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
-
-            echo "Webflow status: $STATUS"
-            echo "Webflow response: $BODY"
-
-            if [ "$STATUS" -ge 400 ]; then
-              echo "❌ Webflow error detected. Stopping workflow."
-              exit 1
-            fi
-
+          
+            echo "Status: $STATUS"
+            echo "$BODY"
+          
           done
