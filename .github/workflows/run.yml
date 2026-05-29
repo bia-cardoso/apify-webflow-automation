@@ -30,7 +30,8 @@ jobs:
 
             TITLE=$(jq -r '
               .content
-              | split("\n\n")[0]
+              | gsub("\u00A0"; " ")
+              | gsub("\\n"; " ")
               | gsub("\n"; " ")
               | gsub(" +"; " ")
               | sub("^ +"; "")
