@@ -1,39 +1,74 @@
-name: LinkedIn → Webflow Sync
+name: LinkedIn Company Updates Scraper
 
 on:
-  schedule:
-    - cron: "0 */24 * * *"
   workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"  # every 6 hours
 
 jobs:
-  sync:
+  scrape:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Install Playwright
-        run: npx playwright install chromium
-
-      - name: Run scraper
-        run: node scraper.js
-
-      - name: Debug output
+      - name: Fetch LinkedIn company page
+        id: fetch
         run: |
-          echo "=== FILES IN DIRECTORY ==="
-          ls -la
-          echo "=== POSTS OUTPUT ==="
-          if [ -f posts.json ]; then
-            cat posts.json
-          else
-            echo "posts.json not found"
+          echo "🔵 Fetching LinkedIn company page..."
+
+          curl -L \
+            "https://pt.linkedin.com/company/loopfuture/" \
+            -H "User-Agent: Mozilla/5.0" \
+            -H "Accept-Language: en-US,en;q=0.9" \
+            -o page.html
+
+          echo "✅ Page downloaded"
+          echo "📦 File size:"
+          ls -lh page.html
+
+      - name: Debug raw HTML (sanity check)
+        run: |
+          echo "🔍 Checking if 'updates' section exists..."
+
+          grep -i "updates__list" page.html || echo "❌ updates__list NOT FOUND"
+
+          echo ""
+          echo "🔍 Checking post links..."
+          grep -o 'https://www.linkedin.com/posts[^"]*' page.html | head -n 20 || echo "❌ No post links found"
+
+      - name: Extract post URLs
+        id: extract
+        run: |
+          echo "🟢 Extracting post URLs..."
+
+          POSTS=$(grep -o 'https://www.linkedin.com/posts[^"]*' page.html | sort -u)
+
+          if [ -z "$POSTS" ]; then
+            echo "❌ No posts extracted — LinkedIn structure may have changed"
+            exit 1
           fi
+
+          echo "📌 Found posts:"
+          echo "$POSTS"
+
+          # Save to file for later steps (Webflow / Apify / etc.)
+          echo "$POSTS" > posts.txt
+
+      - name: Debug extracted output
+        run: |
+          echo "📄 Final extracted posts:"
+          cat posts.txt
+
+      - name: Optional - show snippet around Updates section
+        run: |
+          echo "🧠 Dumping surrounding context for troubleshooting..."
+
+          grep -n -C 5 "updates__list" page.html || echo "No updates section found in HTML structure"
+
+      - name: Upload artifact (for debugging)
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-posts
+          path: posts.txt
