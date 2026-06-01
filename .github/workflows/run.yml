@@ -36,6 +36,8 @@ jobs:
               | cut -c1-256)
     
             URL=$(echo "$post" | jq -r '.linkedinUrl')
+
+            CONTENT=$(echo "$post" | jq -r '.content')
     
             # 🔥 escape for JSON
             TITLE_JSON=$(printf '%s' "$TITLE" | jq -R .)
@@ -54,6 +56,8 @@ jobs:
                   \"name\": $TITLE_JSON,
                   \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
                   \"post-url\": $URL_JSON
+                  \"Content\": $CONTENT
+
                 }
               }")
     
