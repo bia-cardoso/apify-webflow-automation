@@ -1,16 +1,15 @@
-name: Apify → Webflow Sync
+name: LinkedIn → Webflow Sync
 
-'on':
+on:
   schedule:
-  - cron: 0 */24 * * *
-  workflow_dispatch: null
+    - cron: "0 */24 * * *"
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    
-    steps:
 
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -28,9 +27,13 @@ jobs:
       - name: Run scraper
         run: node scraper.js
 
-      - name: Debug: show files
+      - name: Debug output
         run: |
           echo "=== FILES IN DIRECTORY ==="
           ls -la
           echo "=== POSTS OUTPUT ==="
-          cat posts.json || echo "posts.json not found"
+          if [ -f posts.json ]; then
+            cat posts.json
+          else
+            echo "posts.json not found"
+          fi
