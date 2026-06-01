@@ -39,12 +39,12 @@ jobs:
 
             # 👇 NEW: check last 5 Webflow posts for duplicates
             EXISTING=$(curl -s \
-              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items?limit=5&sort=-created-on" \
+              "https://api.webflow.com/v1/collections/69fb63b8ccb3ec3580dbbf43/items?limit=5&sort=-created-on" \
               -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
               -H "accept-version: 1.0.0")
 
             FOUND=$(echo "$EXISTING" | jq -r --arg url "$URL" '
-              .items[]? | select(.fieldData["post-url"] == $url) | .id')
+              .items[]? | select(.fields["post-url"] == $url) | .id')
 
             if [ -n "$FOUND" ]; then
               echo "⛔ Duplicate detected (last 5 Webflow items) — skipping: $URL"
@@ -77,33 +77,36 @@ jobs:
             echo "============================================"
                 
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items" \
+              "https://api.webflow.com/v1/collections/69fb63b8ccb3ec3580dbbf43/items" \
               -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
               -H "Content-Type: application/json" \
               -H "accept-version: 1.0.0" \
               -d "{
-                \"fieldData\": {
+                \"fields\": {
                   \"name\": $TITLE_JSON,
                   \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
                   \"post-url\": $URL_JSON,
                   \"content\": $CONTENT_JSON,
                   \"date\": $DATE_JSON,
-                  \"image\": $IMAGE_JSON
+                  \"image\": $IMAGE_JSON,
+                  \"_archived\": false,
+                  \"_draft\": false
                 }
               }")
     
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
-            ITEM_ID=$(echo "$BODY" | jq -r '.id // empty')            
+            ITEM_ID=$(echo "$BODY" | jq -r '.id // empty')
 
-           if [ -n "$ITEM_ID" ]; then
-            curl -s -X POST \
-              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items/$ITEM_ID/publish" \
-              -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
-              -H "accept-version: 1.0.0" \
-              -H "Content-Type: application/json" \
-              -d '{}'
-          fi
+            # 👇 V1 "publish item" equivalent = set live
+            if [ -n "$ITEM_ID" ]; then
+              curl -s -X PUT \
+                "https://api.webflow.com/v1/collections/69fb63b8ccb3ec3580dbbf43/items/$ITEM_ID/live" \
+                -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
+                -H "accept-version: 1.0.0" \
+                -H "Content-Type: application/json" \
+                -d '{}'
+            fi
            
             echo "$RESPONSE"
             echo "Status: $STATUS"
