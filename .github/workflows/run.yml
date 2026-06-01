@@ -94,6 +94,18 @@ jobs:
     
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
+            ITEM_ID=$(echo "$BODY" | jq -r '.id')
+            
+            if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 201 ]; then
+              echo "Publishing item: $ITEM_ID"
+            
+              curl -s -X POST \
+                "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items/$ITEM_ID/publish" \
+                -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+                -H "accept-version: 1.0.0" \
+                -H "Content-Type: application/json" \
+                -d '{}'
+            fi
            
             echo "$RESPONSE"
             echo "Status: $STATUS"
