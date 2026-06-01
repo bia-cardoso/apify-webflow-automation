@@ -13,20 +13,24 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
-    
+
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      
+
       - name: Install dependencies
         run: npm install
-      
+
       - name: Install Playwright
         run: npx playwright install chromium
 
-      - name: Scrape LinkedIn
+      - name: Run scraper
         run: node scraper.js
 
-      - name: Show output
-        run: cat posts.json
+      - name: Debug: show files
+        run: |
+          echo "=== FILES IN DIRECTORY ==="
+          ls -la
+          echo "=== POSTS OUTPUT ==="
+          cat posts.json || echo "posts.json not found"
