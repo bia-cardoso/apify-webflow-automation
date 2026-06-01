@@ -88,7 +88,8 @@ jobs:
                   \"post-url\": $URL_JSON,
                   \"content\": $CONTENT_JSON,
                   \"date\": $DATE_JSON,
-                  \"image\": $IMAGE_JSON
+                  \"image\": $IMAGE_JSON,
+                  \"_draft\": false
                 }
               }")
     
