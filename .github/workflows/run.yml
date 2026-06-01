@@ -1,23 +1,68 @@
 name: Apify → Webflow Sync
+
 'on':
-  schedule:
-    - cron: 0 */24 * * *
-  workflow_dispatch: null
+schedule:
+- cron: 0 */24 * * *
+workflow_dispatch: null
+
 jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run Apify (SYNC TASK)
-        run: |
-          DATA=$(curl -s -X POST \
-            "https://api.apify.com/v2/actor-tasks/beatriz.cardoso~linkedin-profile-posts-task/run-sync-get-dataset-items?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E" \
-            -H "Content-Type: application/json" \
-            -d '{}')
+sync:
+runs-on: ubuntu-latest
 
-          echo "$DATA" > posts.json
+```
+steps:
+  - name: Run Apify (SYNC TASK)
+    run: |
+      DATA=$(curl -s -X POST \
+        "https://api.apify.com/v2/actor-tasks/beatriz.cardoso~linkedin-profile-posts-task/run-sync-get-dataset-items?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E" \
+        -H "Content-Type: application/json" \
+        -d '{}')
 
-          echo "Preview:"
-          cat posts.json
+      echo "$DATA" > posts.json
 
-      - name: Send to Webflow CMS
-        run: "set -e\n\njq -c '.[]' posts.json | while IFS= read -r post; do\n\n  TITLE=$(echo \"$post\" | jq -r '.content | split(\"\\n\")[0]' \\\n    | tr -d '\\r' \\\n    | sed 's/\\xC2\\xA0/ /g' \\\n    | awk -F'\\n' '{print $1}' \\\n    | xargs \\\n    | cut -c1-256)\n            \n  URL=$(echo \"$post\" | jq -r '.linkedinUrl')\n  # \U0001F525 escape for JSON\n  TITLE_JSON=$(printf '%s' \"$TITLE\" | jq -R .)\n  URL_JSON=$(printf '%s' \"$URL\" | jq -R .)\n\n  \n  echo \"Posting (CLEAN): $TITLE\"\n  echo \"Length: ${#TITLE}\"\n\n RESPONSE=$(curl -s -w \"\\n%{http_code}\" -X POST \\\n  \"https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items\" \\\n  -H \"Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"accept-version: 1.0.0\" \\\n  -d \"{\n    \\\"fieldData\\\": {\n      \\\"name\\\": $TITLE_JSON,\n      \\\"slug\\\": $(echo \"$URL\" | md5sum | cut -d' ' -f1 | jq -R .),\n      \\\"post-url\\\": $URL_JSON\n    }\n  }\")\n\n  BODY=$(echo \"$RESPONSE\" | sed '$d')\n  STATUS=$(echo \"$RESPONSE\" | tail -n1)\n\n  echo \"Status: $STATUS\"\n  echo \"$BODY\"\n\ndone\n"
+      echo "Preview:"
+      cat posts.json
+
+  - name: Send to Webflow CMS
+    run: |
+      set -e
+
+      jq -c '.[]' posts.json | while IFS= read -r post; do
+
+        TITLE=$(echo "$post" | jq -r '.content | split("\n")[0]' \
+          | tr -d '\r' \
+          | sed 's/\xC2\xA0/ /g' \
+          | awk -F'\n' '{print $1}' \
+          | xargs \
+          | cut -c1-256)
+
+        URL=$(echo "$post" | jq -r '.linkedinUrl')
+
+        # 🔥 escape for JSON
+        TITLE_JSON=$(printf '%s' "$TITLE" | jq -R .)
+        URL_JSON=$(printf '%s' "$URL" | jq -R .)
+
+        echo "Posting (CLEAN): $TITLE"
+        echo "Length: ${#TITLE}"
+
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+          "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items" \
+          -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
+          -H "Content-Type: application/json" \
+          -H "accept-version: 1.0.0" \
+          -d "{
+            \"fieldData\": {
+              \"name\": $TITLE_JSON,
+              \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
+              \"post-url\": $URL_JSON
+            }
+          }")
+
+        BODY=$(echo "$RESPONSE" | sed '$d')
+        STATUS=$(echo "$RESPONSE" | tail -n1)
+
+        echo "Status: $STATUS"
+        echo "$BODY"
+
+      done
+```
