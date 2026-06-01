@@ -31,5 +31,5 @@ jobs:
       - name: Upload screenshot
         uses: actions/upload-artifact@v4
         with:
-        name: linkedin-debug
-        path: linkedin.png
+          name: linkedin-debug
+          path: linkedin.png
