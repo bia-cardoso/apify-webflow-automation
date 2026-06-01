@@ -37,10 +37,22 @@ jobs:
     
             URL=$(echo "$post" | jq -r '.linkedinUrl')
 
+            # 👇 NEW: check last 5 Webflow posts for duplicates
+            EXISTING=$(curl -s \
+              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items?limit=5&sort=-created-on&fields=post-url" \
+              -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
+              -H "accept-version: 1.0.0")
+
+            FOUND=$(echo "$EXISTING" | jq -r --arg url "$URL" '
+              .items[]? | select(.fieldData["post-url"] == $url) | .id')
+
+            if [ -n "$FOUND" ]; then
+              echo "⛔ Duplicate detected (last 5 Webflow items) — skipping: $URL"
+              continue
+            fi
+
             CONTENT=$(echo "$post" | jq -r '.content')
-
             DATE=$(echo "$post" | jq -r '.postedAt.date')
-
             IMAGE=$(echo "$post" | jq -r '.postImages[0].url // empty')
     
             # 🔥 escape for JSON
@@ -66,25 +78,12 @@ jobs:
                   \"content\": $CONTENT_JSON,
                   \"date\": $DATE_JSON,
                   \"image\": $IMAGE_JSON
-
                 }
               }")
     
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
-            PAYLOAD="{
-              \"fieldData\": {
-                \"name\": $TITLE_JSON,
-                \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
-                \"post-url\": $URL_JSON,
-                \"content\": $CONTENT_JSON,
-                \"date\": $DATE_JSON,
-                \"image\": $IMAGE_JSON
-              }
-            }"
-
-            echo "PAYLOAD:"
-            echo "$PAYLOAD"
+    
             echo "Status: $STATUS"
             echo "$BODY"
     
