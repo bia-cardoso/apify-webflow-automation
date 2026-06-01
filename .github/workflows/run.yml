@@ -83,7 +83,8 @@ jobs:
     
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
-    
+           
+            echo "$RESPONSE"
             echo "Status: $STATUS"
             echo "$BODY"
     
