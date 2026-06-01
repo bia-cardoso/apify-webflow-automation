@@ -88,7 +88,8 @@ jobs:
                   \"post-url\": $URL_JSON,
                   \"content\": $CONTENT_JSON,
                   \"date\": $DATE_JSON,
-                  \"image\": $IMAGE_JSON
+                  \"image\": $IMAGE_JSON,
+                  \"isDraft\": false
                 }
               }")
     
@@ -96,20 +97,8 @@ jobs:
             STATUS=$(echo "$RESPONSE" | tail -n1)
             ITEM_ID=$(echo "$BODY" | jq -r '.id')
             
-           if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 201 ]; then
-              echo "Publishing item (setting isDraft=false): $ITEM_ID"
-            
-              curl -s -X PATCH \
-                "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items/$ITEM_ID" \
-                -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
-                -H "Content-Type: application/json" \
-                -H "accept-version: 1.0.0" \
-                -d '{
-                  "fieldData": {
-                    "isDraft": false
-                  }
-                }'
-            fi
+           
+           
             echo "$RESPONSE"
             echo "Status: $STATUS"
             echo "$BODY"
