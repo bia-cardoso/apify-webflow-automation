@@ -41,12 +41,14 @@ jobs:
 
             DATE=$(echo "$post" | jq -r '.postedAt.date')
 
+            IMAGE=$(echo "$post" | jq -r '.postImages[0].url // empty')
     
             # 🔥 escape for JSON
             TITLE_JSON=$(printf '%s' "$TITLE" | jq -R .)
             URL_JSON=$(printf '%s' "$URL" | jq -R .)
             CONTENT_JSON=$(printf '%s' "$CONTENT" | jq -Rs .)
             DATE_JSON=$(printf '%s' "$DATE" | jq -R .)
+            IMAGE_JSON=$(printf '%s' "$IMAGE" | jq -R .)
     
             echo "Posting (CLEAN): $TITLE"
             echo "Length: ${#TITLE}"
@@ -62,7 +64,8 @@ jobs:
                   \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
                   \"post-url\": $URL_JSON,
                   \"content\": $CONTENT_JSON,
-                  \"date\": $DATE_JSON
+                  \"date\": $DATE_JSON,
+                  \"image\": $IMAGE_JSON
 
                 }
               }")
@@ -75,7 +78,8 @@ jobs:
                 \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
                 \"post-url\": $URL_JSON,
                 \"content\": $CONTENT_JSON,
-                \"date\": $DATE_JSON
+                \"date\": $DATE_JSON,
+                \"image\": $IMAGE_JSON
               }
             }"
 
