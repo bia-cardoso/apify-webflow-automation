@@ -99,12 +99,17 @@ jobs:
             if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 201 ]; then
               echo "Publishing item: $ITEM_ID"
             
-              curl -s -X POST \
+              PUBLISH_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
                 "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items/$ITEM_ID/publish" \
                 -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
-                -H "accept-version: 1.0.0" \
                 -H "Content-Type: application/json" \
-                -d '{}'
+                -d '{}')
+            
+              PUBLISH_BODY=$(echo "$PUBLISH_RESPONSE" | sed '$d')
+              PUBLISH_STATUS=$(echo "$PUBLISH_RESPONSE" | tail -n1)
+            
+              echo "Publish status: $PUBLISH_STATUS"
+              echo "$PUBLISH_BODY"
             fi
            
             echo "$RESPONSE"
