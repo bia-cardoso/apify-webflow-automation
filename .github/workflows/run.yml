@@ -57,14 +57,24 @@ jobs:
                   \"name\": $TITLE_JSON,
                   \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
                   \"post-url\": $URL_JSON,
-                  \"Content\": $CONTENT
+                  \"content\": $CONTENT
 
                 }
               }")
     
             BODY=$(echo "$RESPONSE" | sed '$d')
             STATUS=$(echo "$RESPONSE" | tail -n1)
-    
+            PAYLOAD="{
+              \"fieldData\": {
+                \"name\": $TITLE_JSON,
+                \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
+                \"post-url\": $URL_JSON,
+                \"Content\": $CONTENT_JSON
+              }
+            }"
+
+            echo "PAYLOAD:"
+            echo "$PAYLOAD"
             echo "Status: $STATUS"
             echo "$BODY"
     
