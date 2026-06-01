@@ -42,6 +42,7 @@ jobs:
             # 🔥 escape for JSON
             TITLE_JSON=$(printf '%s' "$TITLE" | jq -R .)
             URL_JSON=$(printf '%s' "$URL" | jq -R .)
+            CONTENT_JSON=$(printf '%s' "$CONTENT" | jq -R .)
     
             echo "Posting (CLEAN): $TITLE"
             echo "Length: ${#TITLE}"
