@@ -60,7 +60,11 @@ jobs:
             URL_JSON=$(printf '%s' "$URL" | jq -R .)
             CONTENT_JSON=$(printf '%s' "$CONTENT" | jq -Rs .)
             DATE_JSON=$(printf '%s' "$DATE" | jq -R .)
-            IMAGE_JSON=$(printf '%s' "$IMAGE" | jq -R .)
+            if [ -n "$IMAGE" ]; then
+              IMAGE_JSON=$(printf '%s' "$IMAGE" | jq -R .)
+            else
+              IMAGE_JSON="null"
+            fi
     
             echo "Posting (CLEAN): $TITLE"
             echo "Length: ${#TITLE}"
