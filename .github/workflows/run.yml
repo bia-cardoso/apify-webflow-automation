@@ -57,7 +57,7 @@ jobs:
                   \"name\": $TITLE_JSON,
                   \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
                   \"post-url\": $URL_JSON,
-                  \"content\": $CONTENT
+                  \"content\": $CONTENT_JSON
 
                 }
               }")
