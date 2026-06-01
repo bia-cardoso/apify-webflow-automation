@@ -1,74 +1,112 @@
-name: LinkedIn Company Updates Scraper
+name: Apify → Webflow Sync
 
-on:
-  workflow_dispatch:
+'on':
   schedule:
-    - cron: "0 */6 * * *"  # every 6 hours
+  - cron: 0 */24 * * *
+  workflow_dispatch: null
 
 jobs:
-  scrape:
+  sync:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Fetch LinkedIn company page
-        id: fetch
+      - name: Run Apify (SYNC TASK)
         run: |
-          echo "🔵 Fetching LinkedIn company page..."
-
-          curl -L \
-            "https://pt.linkedin.com/company/loopfuture/" \
-            -H "User-Agent: Mozilla/5.0" \
-            -H "Accept-Language: en-US,en;q=0.9" \
-            -o page.html
-
-          echo "✅ Page downloaded"
-          echo "📦 File size:"
-          ls -lh page.html
-
-      - name: Debug raw HTML (sanity check)
+          DATA=$(curl -s -X POST \
+            "https://api.apify.com/v2/actor-tasks/beatriz.cardoso~linkedin-profile-posts-task/run-sync-get-dataset-items?token=apify_api_ZyuoqNOva7Yfn2fG6JUDkAMpRHI3dh489O8E" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+    
+          echo "$DATA" > posts.json
+    
+          echo "Preview:"
+          cat posts.json
+    
+      - name: Send to Webflow CMS
         run: |
-          echo "🔍 Checking if 'updates' section exists..."
+          set -e
+    
+          jq -c '.[]' posts.json | while IFS= read -r post; do
+    
+            TITLE=$(echo "$post" | jq -r '.content | split("\n")[0]' \
+              | tr -d '\r' \
+              | sed 's/\xC2\xA0/ /g' \
+              | awk -F'\n' '{print $1}' \
+              | xargs \
+              | cut -c1-256)
+    
+            URL=$(echo "$post" | jq -r '.linkedinUrl')
 
-          grep -i "updates__list" page.html || echo "❌ updates__list NOT FOUND"
+            # 👇 NEW: check last 5 Webflow posts for duplicates
+            EXISTING=$(curl -s \
+              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items?limit=5&sort=-created-on" \
+              -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
+              -H "accept-version: 1.0.0")
 
-          echo ""
-          echo "🔍 Checking post links..."
-          grep -o 'https://www.linkedin.com/posts[^"]*' page.html | head -n 20 || echo "❌ No post links found"
+            FOUND=$(echo "$EXISTING" | jq -r --arg url "$URL" '
+              .items[]? | select(.fieldData["post-url"] == $url) | .id')
 
-      - name: Extract post URLs
-        id: extract
-        run: |
-          echo "🟢 Extracting post URLs..."
+            if [ -n "$FOUND" ]; then
+              echo "⛔ Duplicate detected (last 5 Webflow items) — skipping: $URL"
+              continue
+            fi
 
-          POSTS=$(grep -o 'https://www.linkedin.com/posts[^"]*' page.html | sort -u)
+            CONTENT=$(echo "$post" | jq -r '.content')
+            DATE=$(echo "$post" | jq -r '.postedAt.date')
+            IMAGE=$(echo "$post" | jq -r '.postImages[0].url // empty')
+    
+            # 🔥 escape for JSON
+            TITLE_JSON=$(printf '%s' "$TITLE" | jq -R .)
+            URL_JSON=$(printf '%s' "$URL" | jq -R .)
+            CONTENT_JSON=$(printf '%s' "$CONTENT" | jq -Rs .)
+            DATE_JSON=$(printf '%s' "$DATE" | jq -R .)
+            if [ -n "$IMAGE" ]; then
+              IMAGE_JSON=$(printf '%s' "$IMAGE" | jq -R .)
+            else
+              IMAGE_JSON="null"
+            fi
+    
+            echo "Posting (CLEAN): $TITLE"
+            echo "Length: ${#TITLE}"
 
-          if [ -z "$POSTS" ]; then
-            echo "❌ No posts extracted — LinkedIn structure may have changed"
-            exit 1
-          fi
+            echo "================ DEBUG ITEM ================"
+            echo "TITLE: $TITLE"
+            echo "URL: $URL"
+            echo "DATE: $DATE"
+            echo "IMAGE RAW: $IMAGE"
+            echo "============================================"
+                
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items" \
+              -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
+              -H "Content-Type: application/json" \
+              -H "accept-version: 1.0.0" \
+              -d "{
+                \"fieldData\": {
+                  \"name\": $TITLE_JSON,
+                  \"slug\": $(echo "$URL" | md5sum | cut -d' ' -f1 | jq -R .),
+                  \"post-url\": $URL_JSON,
+                  \"content\": $CONTENT_JSON,
+                  \"date\": $DATE_JSON,
+                  \"image\": $IMAGE_JSON
+                }
+              }")
+    
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            STATUS=$(echo "$RESPONSE" | tail -n1)
+            ITEM_ID=$(echo "$BODY" | jq -r '.id // empty')            
 
-          echo "📌 Found posts:"
-          echo "$POSTS"
-
-          # Save to file for later steps (Webflow / Apify / etc.)
-          echo "$POSTS" > posts.txt
-
-      - name: Debug extracted output
-        run: |
-          echo "📄 Final extracted posts:"
-          cat posts.txt
-
-      - name: Optional - show snippet around Updates section
-        run: |
-          echo "🧠 Dumping surrounding context for troubleshooting..."
-
-          grep -n -C 5 "updates__list" page.html || echo "No updates section found in HTML structure"
-
-      - name: Upload artifact (for debugging)
-        uses: actions/upload-artifact@v4
-        with:
-          name: linkedin-posts
-          path: posts.txt
+            if [ -n "$ITEM_ID" ]; then
+            curl -s -X POST \
+              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items/$ITEM_ID/publish" \
+              -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
+              -H "accept-version: 1.0.0" \
+              -H "Content-Type: application/json" \
+              -d '{}'
+            fi
+           
+            echo "$RESPONSE"
+            echo "Status: $STATUS"
+            echo "$BODY"
+    
+          done
