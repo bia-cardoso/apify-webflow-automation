@@ -2,7 +2,7 @@ name: Apify → Webflow Sync
 
 'on':
   schedule:
-  - cron: 0 */24 * * *
+  - cron: "0 12 * * *"
   workflow_dispatch: null
 
 jobs:
