@@ -25,6 +25,17 @@ jobs:
       - name: Send to Webflow CMS
         run: |
           set -e
+
+          echo "Loading last 5 Webflow items..."
+
+          EXISTING=$(curl -s \
+            "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items?limit=5&sort=-created-on" \
+            -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
+            -H "accept-version: 1.0.0")
+          
+          echo "Recent Webflow URLs:"
+          echo "$EXISTING" | jq -r '.items[]?.fieldData["post-url"]'
+
     
           jq -c '.[]' posts.json | while IFS= read -r post; do
     
@@ -36,6 +47,17 @@ jobs:
               | cut -c1-256)
     
             URL=$(echo "$post" | jq -r '.linkedinUrl')
+
+            FOUND=$(echo "$EXISTING" | jq -r --arg url "$URL" '
+              .items[]?
+              | select(.fieldData["post-url"] == $url)
+              | .id
+            ')
+            
+            if [ -n "$FOUND" ]; then
+              echo "⛔ Duplicate detected in the last 5 Webflow items — skipping: $URL"
+              continue
+            fi
 
             # 👇 NEW: check last 5 Webflow posts for duplicates
             EXISTING=$(curl -s \
@@ -98,6 +120,15 @@ jobs:
             ITEM_ID=$(echo "$BODY" | jq -r '.id // empty')            
 
             if [ -n "$ITEM_ID" ]; then
+              # Update the cached last-5 list so duplicates in the same run are avoided
+              EXISTING=$(echo "$EXISTING" | jq \
+                --arg id "$ITEM_ID" \
+                --arg url "$URL" \
+                '.items |= ([{
+                  id: $id,
+                  fieldData: {"post-url": $url}
+                }] + .)[:5]')
+            
               curl -s -X POST \
                 "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items/publish" \
                 -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
