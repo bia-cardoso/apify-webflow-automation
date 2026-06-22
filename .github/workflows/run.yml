@@ -29,7 +29,7 @@ jobs:
           echo "Loading last 5 Webflow items..."
 
           EXISTING=$(curl -s \
-            "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items?limit=5&sort=-created-on" \
+            "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items?sortBy=lastPublished&sortOrder=desc&limit=5" \
             -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
             -H "accept-version: 1.0.0")
           
@@ -59,11 +59,7 @@ jobs:
               continue
             fi
 
-            # 👇 NEW: check last 5 Webflow posts for duplicates
-            EXISTING=$(curl -s \
-              "https://api.webflow.com/v2/collections/69fb63b8ccb3ec3580dbbf43/items?limit=5&sort=-created-on" \
-              -H "Authorization: Bearer c1569fb118524c5facc93ac79c7e15a2a90c78570aa9c75a3d61c8ae7087805d" \
-              -H "accept-version: 1.0.0")
+           
 
             FOUND=$(echo "$EXISTING" | jq -r --arg url "$URL" '
               .items[]? | select(.fieldData["post-url"] == $url) | .id')
